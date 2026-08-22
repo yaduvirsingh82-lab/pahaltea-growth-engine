@@ -23,7 +23,8 @@
 
 - GitHub push is blocked because this environment has no GitHub credentials (`SEC_E_NO_CREDENTIALS`). Local commits are being created; no remote changes can be made until authenticated Git credentials are available.
 - A database connection is not configured. Migrations are present but no database is provisioned or contacted.
-- Phase 4 cannot start safely: PahalTea.com platform/store ownership is unconfirmed, and no authorised Shopify/Meta sandbox or read-only accounts/credentials exist. Per policy, no production systems will be contacted.
+- A public, read-only storefront check confirms that PahalTea.com is Shopify-powered. This does not establish store ownership, API access, approved scopes, or permission to ingest production data.
+- Phase 4 cannot start safely: no owner-authorised Shopify/Meta sandbox or read-only accounts/credentials exist. Per policy, no authenticated production systems will be contacted.
 
 ## Approval required
 

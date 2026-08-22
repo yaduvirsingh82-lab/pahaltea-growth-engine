@@ -1,26 +1,29 @@
 # Project Status
 
-**Current phase:** 2 — Foundation (in progress)
+**Current phase:** 4 — Read-only data integrations (blocked pending account/platform authorisation)
 
 ## Completed
 
 - Phase 1 repository audit, architecture, integration inventory, risk register and agent instructions.
 - Phase 1 documents committed locally as `24c734e`.
 - Phase 2 foundation scaffold: Node/TypeScript workspace, governance policy engine, immutable audit/outbox interfaces, initial PostgreSQL migration, CI validation, and offline-safe configuration.
+- Phase 2 foundation committed locally as `e9204af` after policy tests passed.
+- Phase 3 claim/evidence lifecycle, content-claim citation validation, and non-publishing content control-plane schema implemented and validated locally.
 
 ## Current work
 
-- Validate the Phase 2 governance foundation and commit it locally.
+- Await the platform confirmation and sandbox/read-only credentials needed for the first integration adapters.
 
 ## Next work
 
-- Complete Phase 2 persistence/repository implementation and test it against local PostgreSQL or a disposable test database.
-- Phase 3: build the claim catalogue, evidence workflow, controlled content drafts, and claim validation.
+- Implement read-only Shopify and Meta/Instagram adapters, webhook verification, reconciliation, and contract tests after accounts are authorised.
+- Then proceed to Phase 5 reporting and recommendation workflows using only ingested/sandbox data.
 
 ## Blockers
 
 - GitHub push is blocked because this environment has no GitHub credentials (`SEC_E_NO_CREDENTIALS`). Local commits are being created; no remote changes can be made until authenticated Git credentials are available.
-- A database connection is not configured. The schema is present but no database is provisioned or contacted.
+- A database connection is not configured. Migrations are present but no database is provisioned or contacted.
+- Phase 4 cannot start safely: PahalTea.com platform/store ownership is unconfirmed, and no authorised Shopify/Meta sandbox or read-only accounts/credentials exist. Per policy, no production systems will be contacted.
 
 ## Approval required
 

@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "node --experimental-strip-types --test packages/domain/test/*.test.ts",
-    "check": "node --experimental-strip-types --check packages/domain/src/types.ts && node --experimental-strip-types --check packages/domain/src/policy.ts && node --experimental-strip-types --check packages/domain/src/audit.ts && node --experimental-strip-types --check packages/domain/src/claims.ts && node --experimental-strip-types --check packages/domain/src/content.ts && node --experimental-strip-types --check apps/api/src/config.ts",
+    "check": "node --experimental-strip-types --check packages/domain/src/types.ts && node --experimental-strip-types --check packages/domain/src/policy.ts && node --experimental-strip-types --check packages/domain/src/audit.ts && node --experimental-strip-types --check packages/domain/src/claims.ts && node --experimental-strip-types --check packages/domain/src/content.ts && node --experimental-strip-types --check packages/domain/src/integrations.ts && node --experimental-strip-types --check apps/api/src/config.ts",
     "validate": "npm run check && npm test"
   }
 }

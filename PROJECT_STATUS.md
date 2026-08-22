@@ -9,7 +9,7 @@
 - Phase 2 foundation scaffold: Node/TypeScript workspace, governance policy engine, immutable audit/outbox interfaces, initial PostgreSQL migration, CI validation, and offline-safe configuration.
 - Phase 2 foundation committed and synchronized to GitHub as `e9204af` after policy tests passed.
 - Phase 3 claim/evidence lifecycle, content-claim citation validation, and non-publishing content control-plane schema implemented and validated locally.
-- Phase 4 offline integration foundation implemented: provider contracts, read-only/sandbox mode enforcement, raw-body Shopify/Meta webhook HMAC verification, and replay-safe idempotent webhook admission.
+- Phase 4 offline integration foundation implemented: provider contracts, read-only/sandbox mode enforcement, raw-body Shopify/Meta webhook HMAC verification, replay-safe idempotent webhook admission, and privacy-minimised connection/webhook persistence migrations.
 
 ## Current work
 

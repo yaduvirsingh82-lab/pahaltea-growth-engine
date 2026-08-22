@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+coverage/
+dist/
+.turbo/
+.DS_Store
+*.log
+
+# Local development data and provider exports must never be committed.
+data/
+exports/

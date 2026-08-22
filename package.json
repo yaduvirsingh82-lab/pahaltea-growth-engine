@@ -1,0 +1,15 @@
+{
+  "name": "pahaltea-growth-engine",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Approval-first growth operations platform for Pahal Tea.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test packages/domain/test/*.test.ts",
+    "check": "node --experimental-strip-types --check packages/domain/src/types.ts && node --experimental-strip-types --check packages/domain/src/policy.ts && node --experimental-strip-types --check packages/domain/src/audit.ts && node --experimental-strip-types --check apps/api/src/config.ts",
+    "validate": "npm run check && npm test"
+  }
+}

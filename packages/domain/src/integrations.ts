@@ -90,3 +90,56 @@ function verifyHmac(payload: string, suppliedSignature: string, secret: string, 
   const expectedBuffer = Buffer.from(expected, encoding);
   return supplied.length === expectedBuffer.length && timingSafeEqual(supplied, expectedBuffer);
 }
+
+/**
+ * Write-mode admission.
+ *
+ * `assertReadOnlyConnection` above is unchanged and still governs every read
+ * path. This is a separate, additive gate for the one case where an external
+ * write is intended, so enabling publishing cannot silently loosen ingestion.
+ *
+ * Four independent conditions must all hold. Any one of them missing is a
+ * refusal, and the reason is returned rather than thrown so the caller can
+ * record it.
+ */
+export interface WriteAdmissionInput {
+  connection: IntegrationConnection;
+  /** Process-level switch. False unless an operator has deliberately enabled writes. */
+  writeActionsEnabled: boolean;
+  /** True only when an approval bound to this exact payload hash was verified. */
+  approvalVerified: boolean;
+  /** The payload the approval was bound to, echoed back for the audit record. */
+  payloadHash: string;
+}
+
+export interface WriteAdmission {
+  admitted: boolean;
+  reason: string;
+}
+
+export function admitWrite(input: WriteAdmissionInput): WriteAdmission {
+  const { connection } = input;
+
+  if (!input.writeActionsEnabled) {
+    return { admitted: false, reason: "External writes are disabled. Set WRITE_ACTIONS_ENABLED=true to enable them." };
+  }
+  if (!connection.enabled) {
+    return { admitted: false, reason: `The ${connection.provider} connection is disabled.` };
+  }
+  if (connection.mode !== "write") {
+    return {
+      admitted: false,
+      reason: `The ${connection.provider} connection is in ${connection.mode} mode; publishing requires write mode.`,
+    };
+  }
+  if (!connection.credentialReference) {
+    return { admitted: false, reason: `The ${connection.provider} connection has no managed credential reference.` };
+  }
+  if (!input.approvalVerified) {
+    return { admitted: false, reason: "No verified approval is bound to this payload." };
+  }
+  if (!input.payloadHash) {
+    return { admitted: false, reason: "An approved payload hash is required to bind the approval to the content." };
+  }
+  return { admitted: true, reason: "Write admitted: enabled write connection with an approval bound to this payload." };
+}

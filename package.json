@@ -14,12 +14,13 @@
     "db:seed": "node --experimental-strip-types packages/db/bin/seed.ts",
     "db:reset": "docker compose down -v && npm run db:up && npm run db:migrate && npm run db:seed",
     "check": "node scripts/check-syntax.mjs",
-    "test": "node --experimental-strip-types --test packages/domain/test/*.test.ts packages/db/test/*.test.ts packages/ai/test/*.test.ts",
+    "test": "node --experimental-strip-types --test packages/domain/test/*.test.ts packages/db/test/*.test.ts packages/ai/test/*.test.ts packages/integrations/test/*.test.ts",
     "validate": "npm run check && npm test",
     "content:generate": "node --experimental-strip-types packages/ai/bin/generate.ts",
     "content:review": "node --experimental-strip-types packages/ai/bin/review.ts",
     "ollama:up": "docker compose --profile ollama up -d ollama",
-    "ollama:pull": "docker compose --profile ollama exec ollama ollama pull qwen2.5:3b-instruct"
+    "ollama:pull": "docker compose --profile ollama exec ollama ollama pull qwen2.5:3b-instruct",
+    "meta:verify": "node --experimental-strip-types packages/integrations/bin/meta-verify.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

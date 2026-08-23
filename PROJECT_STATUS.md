@@ -1,6 +1,6 @@
 # Project Status
 
-**Current phase:** 5b — content generation complete; no publishing capability exists
+**Current phase:** 6 — Instagram publishing implemented and tested; blocked on Meta and Cloudflare R2 credentials
 
 ## Completed
 
@@ -28,13 +28,24 @@
   - CLI review and approval workflow enforcing segregation of duties through the existing approval engine.
   - Runbook at `docs/runbooks/content-generation.md`. 90 tests pass, including 14 integration tests against real PostgreSQL.
 
+- **Action 3 Instagram publishing (this change).** The full publish path exists and is tested; nothing publishes without an explicit `--live` flag and every gate satisfied:
+  - `npm run meta:verify` performs real Graph calls (token validity/scopes/expiry, Instagram account reachability, Page-to-Instagram discovery, granted-vs-required permissions, publishing quota) and prints the exact remaining gate.
+  - Instagram publisher implementing the documented three-step contract: create container, poll `status_code` until `FINISHED`, publish. `ERROR`/`EXPIRED` are fatal and the poll budget is bounded.
+  - Cloudflare R2 media store over `@aws-sdk/client-s3`, content-addressed and immutable, with a real public-reachability check and a JPEG magic-number check.
+  - `admitWrite` domain gate, additive to `assertReadOnlyConnection`, so enabling publishing cannot loosen ingestion.
+  - Migration 0005 `publications` with database-level guarantees and a unique partial index permitting one live publication per draft.
+  - `meta:publish` (dry run by default), `meta:connect` (owner-approved connection record).
+  - Runbook at `docs/runbooks/instagram-publishing.md` with step-by-step Meta and R2 setup.
+  - 151 tests pass, including a simulated end-to-end publish over real HTTP and 11 integration tests against real PostgreSQL.
+
 ## Current work
 
-- Action 3 (not started): Instagram publishing adapter and Cloudflare R2 media hosting.
+- Blocked awaiting Meta developer app credentials and Cloudflare R2 credentials. No code work remains for the first post.
 
 ## Next work
 
-- Action 3: Instagram publishing adapter and Cloudflare R2 media hosting, after Meta developer app and long-lived token provisioning. This requires the narrow, approval-bound replacement of the blanket production-write block described under Blockers.
+- Supply Meta and R2 credentials, run `npm run meta:verify`, then publish the first post per `docs/runbooks/instagram-publishing.md`.
+- After the first post: insights ingestion, then paid advertising. Neither exists.
 - Link the repository to the released Shopify Dev Dashboard app and verify read-only product/order/content access after supported Shopify account authentication is available.
 - Implement the real Shopify read-only adapter and add reconciliation/contract tests.
 
@@ -54,8 +65,8 @@
 ## Blockers
 
 - **`packages/domain/src/policy.ts` structurally prevents publishing.** `canExecute` returns false for every external write in `production` before approvals are evaluated, and `assertReadOnlyConnection` rejects `write` mode outright. Going live requires replacing the blanket block with a narrow, per-connection, approval-bound write allowance, as its own reviewed commit. This is not yet done and is intentionally not part of Action 1.
-- Meta: an Instagram Business/Creator account and a linked Facebook Page exist. A Meta developer app, `instagram_content_publish` scope, and a long-lived token do not yet exist. This is the critical path for the first live post.
-- Instagram's Content Publishing API accepts only a public HTTPS media URL, so Cloudflare R2 (selected) must be provisioned before any creative can be published.
+- **Meta credentials are the critical path.** The Instagram professional account and linked Facebook Page exist. Still required: a Meta developer app, a token carrying `instagram_basic` + `instagram_content_publish` + `pages_read_engagement` + `pages_show_list`, and its long-lived exchange. Step-by-step instructions are in `docs/runbooks/instagram-publishing.md`. No Graph API request has been sent from this repository.
+- **Cloudflare R2 credentials are required.** Instagram fetches media from a public URL rather than accepting an upload, so a publicly readable bucket is mandatory, not optional.
 - Higgsfield is the selected creative layer, but it is currently reachable only as an interactive MCP server. A documented HTTP API and key must be confirmed before unattended automation depends on it; the creative layer will be built behind an interface so the provider can be swapped.
 - No model provider is currently configured. Content generation runs today only on the deterministic offline generator, which produces placeholder copy, not publishable marketing. Configuring Ollama or an Anthropic credential is required before any generated copy is worth reviewing on its merits.
 - Ollama was verified against a live local model (`qwen2.5:3b-instruct` via Docker) and **is not viable on CPU**: measured throughput was 1.23 tokens/second, and a single concept batch exceeded 30 minutes without completing. Connectivity, schema-constrained decoding, streaming and validation were all confirmed working; only generation speed is the blocker. It needs a GPU to be practical. The image plus model occupy roughly 7 GB of disk.

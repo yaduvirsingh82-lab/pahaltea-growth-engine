@@ -21,7 +21,8 @@
     "ollama:up": "docker compose --profile ollama up -d ollama",
     "ollama:pull": "docker compose --profile ollama exec ollama ollama pull qwen2.5:3b-instruct",
     "meta:verify": "node --experimental-strip-types packages/integrations/bin/meta-verify.ts",
-    "meta:publish": "node --experimental-strip-types packages/integrations/bin/meta-publish.ts"
+    "meta:publish": "node --experimental-strip-types packages/integrations/bin/meta-publish.ts",
+    "meta:connect": "node --experimental-strip-types packages/integrations/bin/meta-connect.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

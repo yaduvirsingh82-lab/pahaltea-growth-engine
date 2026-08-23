@@ -11,6 +11,30 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+
+    # Integration tests run against a real PostgreSQL instance. REQUIRE_DB_TESTS
+    # makes a missing database a build failure rather than a silent skip.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pahaltea
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: pahaltea_growth_engine
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pahaltea -d pahaltea_growth_engine"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      APP_ENV: development
+      WRITE_ACTIONS_ENABLED: "false"
+      DATABASE_URL: postgresql://pahaltea:ci-only@localhost:5432/pahaltea_growth_engine
+      REQUIRE_DB_TESTS: "true"
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,3 +43,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run validate
+      - name: Migrate and seed a clean database
+        run: |
+          npm run db:migrate
+          npm run db:seed
+      - name: Migration and seed runs must be idempotent
+        run: |
+          npm run db:migrate
+          npm run db:seed

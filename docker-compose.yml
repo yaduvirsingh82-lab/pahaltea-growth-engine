@@ -1,0 +1,23 @@
+# Local development database only. These credentials are intentionally
+# non-secret and must never be reused for staging or production.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pahaltea-postgres
+    environment:
+      POSTGRES_USER: pahaltea
+      POSTGRES_PASSWORD: local-development-only
+      POSTGRES_DB: pahaltea_growth_engine
+    ports:
+      # Defaults to 5433: 5432 is commonly already taken by another local stack.
+      - "${PAHALTEA_DB_PORT:-5433}:5432"
+    volumes:
+      - pahaltea-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pahaltea -d pahaltea_growth_engine"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pahaltea-postgres-data:

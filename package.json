@@ -8,8 +8,16 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "node --experimental-strip-types packages/db/bin/migrate.ts",
+    "db:seed": "node --experimental-strip-types packages/db/bin/seed.ts",
+    "db:reset": "docker compose down -v && npm run db:up && npm run db:migrate && npm run db:seed",
+    "check": "node scripts/check-syntax.mjs",
     "test": "node --experimental-strip-types --test packages/domain/test/*.test.ts packages/db/test/*.test.ts",
-    "check": "node --experimental-strip-types --check packages/domain/src/types.ts && node --experimental-strip-types --check packages/domain/src/policy.ts && node --experimental-strip-types --check packages/domain/src/audit.ts && node --experimental-strip-types --check packages/domain/src/claims.ts && node --experimental-strip-types --check packages/domain/src/content.ts && node --experimental-strip-types --check packages/domain/src/integrations.ts && node --experimental-strip-types --check apps/api/src/config.ts",
     "validate": "npm run check && npm test"
+  },
+  "dependencies": {
+    "pg": "^8.23.0"
   }
 }

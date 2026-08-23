@@ -160,7 +160,9 @@ const angles: readonly Angle[] = [
 ];
 
 function extractClaimIds(prompt: string): string[] {
-  return [...prompt.matchAll(/id=([0-9a-f-]{36})/gi)].map((match) => match[1]);
+  // Matches the bare identifiers the prompt lists, one per line.
+  return [...prompt.matchAll(/^- ([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/gim)]
+    .map((match) => match[1]);
 }
 
 function extractCount(prompt: string): number {

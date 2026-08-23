@@ -34,7 +34,7 @@ BUSINESS OBJECTIVE
 The goal is not followers. The goal is to get a person to TRY Pahal Tea once, because repeat purchase is expected to follow product trial. Optimise every concept for first purchase: product discovery, curiosity, emotional connection to the tea story, strong visual storytelling, a reason to try now, and credible social proof.
 
 ABSOLUTE RULE ON FACTS
-You are given a numbered list of APPROVED CLAIMS. Every factual assertion you make about the product must be supported by one of those claims, and you must list the supporting claim IDs in citedClaimIds. You may write emotive, sensory, and narrative language freely, but you may NOT introduce any new product fact from your own knowledge. If you cannot support a statement with an approved claim, do not make the statement.
+You are given a list of APPROVED CLAIMS. Every factual assertion you make about the product must be supported by one of those claims, and you must list the supporting claim IDs in citedClaimIds. You may write emotive, sensory, and narrative language freely, but you may NOT introduce any new product fact from your own knowledge. If you cannot support a statement with an approved claim, do not make the statement.
 
 PROHIBITED LANGUAGE
 ${categories}
@@ -52,8 +52,11 @@ Return only JSON matching the provided schema. Hooks must be at most ${HOOK_MAX_
 }
 
 export function buildUserPrompt(claims: readonly ApprovedClaimRecord[], options: PromptOptions): string {
+  // The identifier is presented bare and first. An "id=" style prefix invites a
+  // model to copy the prefix into citedClaimIds, which then matches no claim.
+  // A live qwen2.5:3b run did exactly that.
   const claimList = claims
-    .map((claim, index) => `${index + 1}. id=${claim.id}\n   wording: ${claim.wording}`)
+    .map((claim) => `- ${claim.id}\n  ${claim.wording}`)
     .join("\n");
 
   const constraints: string[] = [`Produce exactly ${options.count} distinct concepts.`];
@@ -63,7 +66,9 @@ export function buildUserPrompt(claims: readonly ApprovedClaimRecord[], options:
   else constraints.push(`Vary the objective across: ${contentObjectives.join(", ")}.`);
   if (options.brief) constraints.push(`Operator brief (styling guidance only, not a source of facts): ${options.brief}`);
 
-  return `APPROVED CLAIMS — the only permitted source of product fact:
+  return `APPROVED CLAIMS — the only permitted source of product fact.
+Each entry is a claim identifier on its own line, followed by that claim's wording.
+Copy identifiers into citedClaimIds exactly as written: no prefix, no numbering, no other text.
 ${claimList}
 
 CONSTRAINTS

@@ -45,8 +45,33 @@ npm run ollama:pull    # pulls qwen2.5:3b-instruct
 npm run content:generate -- --provider ollama
 ```
 
-Override with `OLLAMA_BASE_URL` and `OLLAMA_MODEL`. The image plus a 3B model is
-roughly 3.5 GB of disk; check free space before pulling.
+Override with `OLLAMA_BASE_URL`, `OLLAMA_MODEL` and `OLLAMA_TIMEOUT_MS`.
+
+**Measured on this machine (CPU only, no GPU), 2026-08-23:**
+
+| Observation | Value |
+| --- | --- |
+| Disk: `ollama/ollama` image + `qwen2.5:3b-instruct` | ~7 GB |
+| Generation throughput | **1.23 tokens/second** |
+| One concept batch (`--count 1`) | exceeded 30 minutes without completing |
+
+Two real defects were found and fixed by running this for real:
+
+- A non-streaming request sends no headers until generation completes, and Node's
+  `fetch` aborts after five minutes of silence. The provider now streams NDJSON.
+- The default request timeout was raised to 30 minutes (`OLLAMA_TIMEOUT_MS`).
+
+**Conclusion: CPU-only Ollama is not viable for unattended generation at this
+speed.** It is genuinely free and private, and the integration is correct, but it
+needs a GPU to be practical. Budget roughly 7 GB of disk before pulling.
+
+To remove the Ollama artifacts entirely:
+
+```bash
+docker compose --profile ollama down
+docker rmi ollama/ollama:latest
+docker volume rm pahaltea-growth-engine_pahaltea-ollama-models
+```
 
 ### Anthropic
 

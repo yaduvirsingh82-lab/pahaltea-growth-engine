@@ -30,8 +30,10 @@ export class OllamaProvider implements GenerationProvider {
   constructor(options: OllamaOptions = {}) {
     this.#baseUrl = (options.baseUrl ?? process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").replace(/\/$/, "");
     this.model = options.model ?? process.env.OLLAMA_MODEL ?? "qwen2.5:3b-instruct";
-    // Small models on CPU are slow; a generous default avoids spurious failures.
-    this.#timeoutMs = options.requestTimeoutMs ?? Number(process.env.OLLAMA_TIMEOUT_MS ?? 600_000);
+    // CPU-only inference is slow: a 3B model on this hardware generates around
+    // 1.25 tokens/second, so a full concept batch can run well past ten minutes.
+    // Override with OLLAMA_TIMEOUT_MS when a GPU makes this unnecessary.
+    this.#timeoutMs = options.requestTimeoutMs ?? Number(process.env.OLLAMA_TIMEOUT_MS ?? 1_800_000);
   }
 
   async available(): Promise<ProviderAvailability> {
@@ -63,13 +65,17 @@ export class OllamaProvider implements GenerationProvider {
     const availability = await this.available();
     if (!availability.available) throw new ProviderUnavailableError(this.id, availability.detail);
 
+    // Streaming is not optional here. A non-streaming call sends no response
+    // headers until generation finishes, and Node's fetch aborts after five
+    // minutes of silence ("fetch failed"). CPU-only inference on a small model
+    // routinely runs past that, so we stream and assemble the JSON ourselves.
     const response = await fetch(`${this.#baseUrl}/api/chat`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       signal: AbortSignal.timeout(this.#timeoutMs),
       body: JSON.stringify({
         model: this.model,
-        stream: false,
+        stream: true,
         // Ollama constrains decoding to this JSON Schema.
         format: request.jsonSchema,
         options: {
@@ -83,16 +89,44 @@ export class OllamaProvider implements GenerationProvider {
       }),
     });
 
-    if (!response.ok) {
+    if (!response.ok || !response.body) {
       throw new Error(`Ollama returned ${response.status}: ${(await response.text()).slice(0, 400)}`);
     }
 
-    const body = (await response.json()) as {
-      message?: { content?: string };
-      prompt_eval_count?: number;
-      eval_count?: number;
-    };
-    const raw = body.message?.content ?? "";
+    let raw = "";
+    let inputTokens: number | undefined;
+    let outputTokens: number | undefined;
+    let failure: string | undefined;
+
+    // Ollama streams newline-delimited JSON; a chunk may split a line.
+    let buffer = "";
+    const decoder = new TextDecoder();
+    for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+      buffer += decoder.decode(chunk, { stream: true });
+      let newline = buffer.indexOf("\n");
+      while (newline !== -1) {
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
+        newline = buffer.indexOf("\n");
+        if (line === "") continue;
+
+        const event = JSON.parse(line) as {
+          message?: { content?: string };
+          error?: string;
+          done?: boolean;
+          prompt_eval_count?: number;
+          eval_count?: number;
+        };
+        if (event.error) failure = event.error;
+        raw += event.message?.content ?? "";
+        if (event.done) {
+          inputTokens = event.prompt_eval_count;
+          outputTokens = event.eval_count;
+        }
+      }
+    }
+
+    if (failure) throw new Error(`Ollama reported an error: ${failure}`);
     if (raw.trim() === "") throw new Error("Ollama returned an empty response.");
 
     return {
@@ -100,7 +134,7 @@ export class OllamaProvider implements GenerationProvider {
       model: this.model,
       raw,
       parsed: parseJsonObject(raw),
-      usage: { inputTokens: body.prompt_eval_count, outputTokens: body.eval_count },
+      usage: { inputTokens, outputTokens },
     };
   }
 }

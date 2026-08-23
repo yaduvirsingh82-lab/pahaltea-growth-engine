@@ -218,13 +218,22 @@ test("every advertised provider id constructs", () => {
 
 test("production never silently falls back to the offline generator", async () => {
   await assert.rejects(
-    () => resolveProvider({ environment: "production" }),
-    /No real content provider is available in production/,
-  );
-  await assert.rejects(
     () => resolveProvider({ requested: "offline-template", environment: "production" }),
     /cannot be used in production/,
   );
+
+  // Whether a real provider happens to be reachable on this machine varies, so
+  // assert the invariant rather than one branch: production either resolves a
+  // real provider or refuses, but never yields the stub.
+  try {
+    const resolved = await resolveProvider({ environment: "production" });
+    assert.equal(resolved.provider.isOfflineStub, false, "Production resolved the offline stub.");
+  } catch (error) {
+    assert.match(
+      error instanceof Error ? error.message : String(error),
+      /No real content provider is available in production/,
+    );
+  }
 });
 
 test("development falls back to the offline generator and says so", async () => {
@@ -235,4 +244,34 @@ test("development falls back to the offline generator and says so", async () => 
   } else {
     assert.ok(["ollama", "anthropic"].includes(resolved.provider.id));
   }
+});
+
+test("a non-uuid citation is rejected rather than reaching the database", () => {
+  // A live qwen2.5:3b run returned "id=<uuid>", echoing the prompt's old prefix.
+  // Validation must catch it; persistence must not pass it to a uuid column.
+  const validation = validateConcept(
+    {
+      conceptName: "echoed prefix",
+      format: "feed_post",
+      objective: "trial",
+      hook: "Hook",
+      caption: "Caption",
+      visualBrief: "Brief",
+      cta: "Buy",
+      trialOffer: "One pack",
+      socialProofAngle: "Invite first buyers",
+      hashtags: [],
+      citedClaimIds: [`id=${claims[0].id}`],
+      rationale: "why",
+    },
+    claims,
+  );
+  assert.equal(validation.valid, false);
+  assert.equal(validation.checks.find((entry) => entry.name === "claim_citation")?.passed, false);
+});
+
+test("the user prompt lists bare identifiers with no prefix", () => {
+  const prompt = buildUserPrompt(claims, { count: 1 });
+  assert.equal(/id=/.test(prompt), false, "The prompt reintroduced an id= prefix a model can echo.");
+  for (const claim of claims) assert.ok(prompt.includes(`- ${claim.id}`));
 });

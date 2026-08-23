@@ -19,5 +19,23 @@ services:
       timeout: 5s
       retries: 20
 
+  # Optional local, open-source model runtime. Not started by default:
+  #   docker compose --profile ollama up -d ollama
+  #   docker compose --profile ollama exec ollama ollama pull qwen2.5:3b-instruct
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pahaltea-ollama
+    profiles: ["ollama"]
+    ports:
+      - "${PAHALTEA_OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - pahaltea-ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
 volumes:
   pahaltea-postgres-data:
+  pahaltea-ollama-models:

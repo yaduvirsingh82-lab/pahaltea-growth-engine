@@ -1,3 +1,4 @@
+import type { Role } from "./types.ts";
 import { isApprovedClaim, type ProductClaim } from "./claims.ts";
 
 export type ContentStatus = "draft" | "claim_validation" | "review" | "approved" | "scheduled" | "published" | "failed" | "archived";
@@ -40,4 +41,56 @@ export function moveContentToReview(draft: ContentDraft, claims: readonly Produc
   const validation = validateContentClaims(draft, claims);
   if (!validation.valid) throw new Error(validation.reasons.join(" "));
   return { ...draft, status: "review" };
+}
+
+export interface ContentReviewDecision {
+  draftId: string;
+  reviewerId: string;
+  reviewerRoles: readonly Role[];
+  decision: "approved" | "rejected";
+  note?: string;
+  decidedAt: Date;
+}
+
+/**
+ * Roles eligible to release Instagram content. Kept in step with the
+ * `content.publish` branch of `approvalRequirement`.
+ */
+export const contentReviewRoles: readonly Role[] = ["marketing_approver", "owner"];
+
+export interface ContentReviewOutcome {
+  allowed: boolean;
+  reason: string;
+}
+
+/**
+ * Segregation of duties for content: the person who created a draft cannot be
+ * the person who releases it, and the reviewer must hold a marketing or owner
+ * role. This mirrors `canExecute` in policy.ts rather than reimplementing it —
+ * approving a draft is the decision that later authorises `content.publish`.
+ */
+export function evaluateContentReview(
+  draft: ContentDraft,
+  decision: ContentReviewDecision,
+): ContentReviewOutcome {
+  if (draft.status !== "review" && draft.status !== "claim_validation" && draft.status !== "draft") {
+    return { allowed: false, reason: `Content in ${draft.status} is not awaiting review.` };
+  }
+  if (decision.reviewerId === draft.createdBy) {
+    return { allowed: false, reason: "A draft cannot be reviewed by the actor who created it." };
+  }
+  if (!decision.reviewerRoles.some((role) => contentReviewRoles.includes(role))) {
+    return {
+      allowed: false,
+      reason: `Review requires one of: ${contentReviewRoles.join(", ")}.`,
+    };
+  }
+  return { allowed: true, reason: "Reviewer is eligible and segregated from the creator." };
+}
+
+/** Applies an eligible decision. Throws rather than silently ignoring an ineligible one. */
+export function applyContentReview(draft: ContentDraft, decision: ContentReviewDecision): ContentDraft {
+  const outcome = evaluateContentReview(draft, decision);
+  if (!outcome.allowed) throw new Error(outcome.reason);
+  return { ...draft, status: decision.decision === "approved" ? "approved" : "archived" };
 }

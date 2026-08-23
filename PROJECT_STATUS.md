@@ -1,6 +1,6 @@
 # Project Status
 
-**Current phase:** 5a — runtime data layer complete; content generation (Action 2) not started
+**Current phase:** 5b — content generation complete; no publishing capability exists
 
 ## Completed
 
@@ -19,16 +19,30 @@
   - 46 tests pass, including integration tests executed against a real PostgreSQL instance. CI now runs a PostgreSQL service with `REQUIRE_DB_TESTS=true` so a missing database fails the build rather than skipping coverage.
   - Runbook added at `docs/runbooks/database.md`.
 
+- **Action 2 content generation (this change).** `packages/ai` generates, validates and routes Instagram concepts for human review:
+  - `GenerationProvider` interface so the AI provider is configuration, not code. Three implementations: Ollama (local, open source, free), Anthropic (highest quality, strict tool use for structured output), and a deterministic offline generator for tests and offline development.
+  - Approved-claim retrieval that can only see claims that are `approved` with evidence, hashed into `retrieval_snapshots` for provenance.
+  - Structured concept schema: hook, caption, visual brief, CTA, trial offer, social-proof angle, hashtags, cited claim IDs, rationale, format and objective.
+  - Four recorded validation checks per concept: claim citation, prohibited terms, channel limits, and a trial lever.
+  - Persistence into `content_drafts` with per-check results, citations, generation-run provenance and audit events. Failing drafts are kept as `failed` rather than discarded.
+  - CLI review and approval workflow enforcing segregation of duties through the existing approval engine.
+  - Runbook at `docs/runbooks/content-generation.md`. 90 tests pass, including 14 integration tests against real PostgreSQL.
+
 ## Current work
 
-- Action 2 (not started): `packages/ai` content generation — retrieve approved claims, generate Instagram concepts, validate citations, persist reviewable `content_drafts`. Requires an Anthropic API key.
+- Action 3 (not started): Instagram publishing adapter and Cloudflare R2 media hosting.
 
 ## Next work
 
-- Action 2: content generation and draft review CLI. No publishing capability.
 - Action 3: Instagram publishing adapter and Cloudflare R2 media hosting, after Meta developer app and long-lived token provisioning. This requires the narrow, approval-bound replacement of the blanket production-write block described under Blockers.
 - Link the repository to the released Shopify Dev Dashboard app and verify read-only product/order/content access after supported Shopify account authentication is available.
 - Implement the real Shopify read-only adapter and add reconciliation/contract tests.
+
+## Content generation status
+
+- Generation, validation, persistence and human approval work end to end against a real database.
+- No Instagram, Meta, or creative-image capability exists. Approving a draft records a human release decision bound to a payload hash; it sends nothing.
+- On Git Bash for Windows, `npm run <script> -- ...` silently drops the invocation when an argument contains a space. Use PowerShell or call node directly. Documented in the runbook.
 
 ## Data and claim status
 
@@ -43,7 +57,8 @@
 - Meta: an Instagram Business/Creator account and a linked Facebook Page exist. A Meta developer app, `instagram_content_publish` scope, and a long-lived token do not yet exist. This is the critical path for the first live post.
 - Instagram's Content Publishing API accepts only a public HTTPS media URL, so Cloudflare R2 (selected) must be provisioned before any creative can be published.
 - Higgsfield is the selected creative layer, but it is currently reachable only as an interactive MCP server. A documented HTTP API and key must be confirmed before unattended automation depends on it; the creative layer will be built behind an interface so the provider can be swapped.
-- No Anthropic API key is configured, so Action 2 cannot run yet.
+- No model provider is currently configured. Content generation runs today only on the deterministic offline generator, which produces placeholder copy, not publishable marketing. Configuring Ollama or an Anthropic credential is required before any generated copy is worth reviewing on its merits.
+- Ollama support is implemented against its documented `/api/chat` structured-output contract but has **not been verified against a live model**: pulling the image exhausted the host disk and crashed Docker Desktop, so the run was abandoned. Treat the Ollama path as unverified until a pull succeeds.
 - No staging or production database is provisioned. Local development and CI both run PostgreSQL 16.
 - GitHub synchronization works through Git Credential Manager. `origin` is `https://github.com/yaduvirsingh82-lab/pahaltea-growth-engine.git`.
 - A public, read-only storefront check confirms that PahalTea.com is Shopify-powered. This does not establish store ownership, API access, approved scopes, or permission to ingest production data.
